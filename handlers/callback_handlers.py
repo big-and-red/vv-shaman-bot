@@ -40,6 +40,7 @@ def register_callback_handlers(bot: TeleBot):
             if not user:
                 user = User(username=call.from_user.username, tg_id=str(call.from_user.id))
                 session.add(user)  # Добавляем пользователя в сессию, если он новый
+                session.commit()
 
             # Создаём запись в таблице time_selections
             time_selection = TimeSelection(time_choice_id=time_choice.id,
