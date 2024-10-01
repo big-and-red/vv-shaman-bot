@@ -1,0 +1,2 @@
+upgrade:
+	alembic upgrade head
