@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from telebot import TeleBot
 
-from db_helpers.models import SessionLocal, TimeChoice, TimeRange, TimeSelection
+from db_helpers.models import SessionLocal, TimeChoice, TimeRange, TimeSelection, User
 from time_data.time_interpretations import time_interpretations
 from utils.message_utils import generate_time_range_buttons
 from utils.message_utils import send_long_message
@@ -13,6 +13,13 @@ from utils.sub_channel_checker import is_user_subscribed
 def register_command_handlers(bot: TeleBot):
     @bot.message_handler(commands=['start'])
     def send_welcome(message):
+        with SessionLocal() as session:
+            user = session.query(User).filter_by(tg_id=message.from_user.id).first()
+            if not user:
+                user = User(username=message.from_user.username, tg_id=str(message.from_user.id))
+                session.add(user)  # Добавляем пользователя в сессию, если он новый
+                session.commit()
+
         response_message = (
             "Этот бот поможет тебе записывать знаки Вселенной.\n\n"
             "*Всякий раз, когда ты видишь время, определенное сочетание цифр — это подсказка.*\n"
@@ -80,12 +87,22 @@ def register_command_handlers(bot: TeleBot):
     @bot.message_handler(commands=['stat'])
     def stat_time_selections(message):
         with SessionLocal() as session:
-            # Получаем все выборы времени
-            time_selections = session.query(TimeSelection).all()
+            # Находим пользователя по tg_id
+            user = session.query(User).filter_by(tg_id=message.chat.id).first()
+
+            if not user:
+                response = "Пользователь не найден."
+                send_long_message(bot, message.chat.id, response, parse_mode='HTML')
+                return
+
+            # Получаем все выборы времени для данного пользователя
+            time_selections = session.query(TimeSelection).filter_by(user_id=user.id).all()
+
             if not time_selections:
                 response = "Вы ещё не добавляли время."
                 send_long_message(bot, message.chat.id, response, parse_mode='HTML')
                 return
+
             time_stats = defaultdict(int)
 
             # Собираем статистику по временам
@@ -108,3 +125,4 @@ def register_command_handlers(bot: TeleBot):
             response = response.strip()
 
             send_long_message(bot, message.chat.id, response, parse_mode='HTML')
+
