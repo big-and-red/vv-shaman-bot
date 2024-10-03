@@ -89,6 +89,9 @@ def register_command_handlers(bot: TeleBot):
         with SessionLocal() as session:
             # Находим пользователя по tg_id
             user = session.query(User).filter_by(tg_id=message.chat.id).first()
+            print(user.id)
+            print(user.tg_id)
+            print('*' * 15)
 
             if not user:
                 response = "Пользователь не найден."
