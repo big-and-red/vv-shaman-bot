@@ -1,13 +1,18 @@
 from collections import defaultdict
+from datetime import datetime
 
 from telebot import TeleBot
 
 from db_helpers.models import SessionLocal, TimeChoice, TimeRange, TimeSelection, User
-from time_data.time_interpretations import time_interpretations
+from data_interpretations.time_interpretations import time_interpretations
+from states import set_user_state, STATE_AWAITING_START_DATE
+from utils.inline_calendar import TelegramCalendar
 from utils.message_utils import generate_time_range_buttons
 from utils.message_utils import send_long_message
 from utils.stat_utils import get_user_time_statistics
 from utils.sub_channel_checker import is_user_subscribed
+
+calendar_instance = TelegramCalendar(locale="ru")
 
 
 def register_command_handlers(bot: TeleBot):
@@ -129,3 +134,11 @@ def register_command_handlers(bot: TeleBot):
 
             send_long_message(bot, message.chat.id, response, parse_mode='HTML')
 
+    @bot.message_handler(commands=['stat_range'])
+    def stat_time_range(message):
+        # Устанавливаем состояние для пользователя
+        set_user_state(message.chat.id, STATE_AWAITING_START_DATE)
+
+        now = datetime.now()
+        calendar_markup = calendar_instance.create_calendar(now.year, now.month)
+        bot.send_message(message.chat.id, "Выберите начальную дату:", reply_markup=calendar_markup)

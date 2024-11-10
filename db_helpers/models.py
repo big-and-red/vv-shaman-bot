@@ -2,9 +2,9 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
-DATABASE_URL = "sqlite:///mydatabase.db"
+from config import Config
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(Config.SQLALCHEMY_DATABASE_URI, echo=True)
 Base = declarative_base()
 
 
@@ -13,7 +13,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
-    tg_id = Column(String, unique=True)
+    tg_id = Column(Integer, unique=True)
     selections = relationship("TimeSelection", back_populates="user")
 
 
@@ -29,6 +29,7 @@ class TimeSelection(Base):
 
 
 class TimeRange(Base):
+    """Группировка по 4 временным отрезкам."""
     __tablename__ = 'time_ranges'
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
@@ -37,6 +38,7 @@ class TimeRange(Base):
 
 
 class TimeChoice(Base):
+    """ Тут лежит время и определение."""
     __tablename__ = 'time_choices'
     id = Column(Integer, primary_key=True, index=True)
     choice = Column(String, index=True)
@@ -45,8 +47,6 @@ class TimeChoice(Base):
     time_range = relationship("TimeRange", back_populates="choices")  # Уже есть
 
 
-# Создание фабрики сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Создание всех таблиц в базе данных
 Base.metadata.create_all(bind=engine)
