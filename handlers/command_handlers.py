@@ -1,11 +1,14 @@
+import logging
 from collections import defaultdict
 from datetime import datetime
 
 from telebot import TeleBot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from config import config_instance
 from db_helpers.models import SessionLocal, TimeChoice, TimeRange, TimeSelection, User
 from data_interpretations.time_interpretations import time_interpretations
-from states import set_user_state, STATE_AWAITING_START_DATE
+from states import set_user_state, STATE_AWAITING_START_DATE, STATE_AWAITING_PREDEFINED_RANGE
 from utils.inline_calendar import TelegramCalendar
 from utils.message_utils import generate_time_range_buttons
 from utils.message_utils import send_long_message
@@ -13,7 +16,7 @@ from utils.stat_utils import get_user_time_statistics
 from utils.sub_channel_checker import is_user_subscribed
 
 calendar_instance = TelegramCalendar(locale="ru")
-
+logger = logging.getLogger()
 
 def register_command_handlers(bot: TeleBot):
     @bot.message_handler(commands=['start'])
@@ -136,9 +139,19 @@ def register_command_handlers(bot: TeleBot):
 
     @bot.message_handler(commands=['stat_range'])
     def stat_time_range(message):
-        # Устанавливаем состояние для пользователя
-        set_user_state(message.chat.id, STATE_AWAITING_START_DATE)
+        user_id = message.chat.id
+        # Устанавливаем новое состояние, ожидаем выбора предопределённого диапазона
+        set_user_state(user_id, STATE_AWAITING_PREDEFINED_RANGE)
+        config_instance.logger.info("stat_range")
+        # Создаём инлайн-клавиатуру
+        keyboard = InlineKeyboardMarkup(row_width=2)
+        btn_this_week = InlineKeyboardButton(text="Эта неделя", callback_data="stat_range_this_week")
+        btn_last_week = InlineKeyboardButton(text="Прошлая неделя", callback_data="stat_range_last_week")
+        btn_this_month = InlineKeyboardButton(text="Этот месяц", callback_data="stat_range_this_month")
+        btn_calendar = InlineKeyboardButton(text="Календарь", callback_data="stat_range_calendar")
 
-        now = datetime.now()
-        calendar_markup = calendar_instance.create_calendar(now.year, now.month)
-        bot.send_message(message.chat.id, "Выберите начальную дату:", reply_markup=calendar_markup)
+        # Добавляем кнопки в клавиатуру
+        keyboard.add(btn_this_week, btn_last_week, btn_this_month, btn_calendar)
+
+        # Отправляем сообщение с инлайн-кнопками
+        bot.send_message(user_id, "Выберите временной промежуток для статистики:", reply_markup=keyboard)

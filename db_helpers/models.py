@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, relationship
 
 from config import Config
 
-engine = create_engine(Config.SQLALCHEMY_DATABASE_URI, echo=True)
+engine = create_engine(Config.SQLALCHEMY_DATABASE_URI, echo=False)
 Base = declarative_base()
 
 

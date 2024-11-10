@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 
 from db_helpers.models import TimeSelection, User, SessionLocal, TimeChoice
 from data_interpretations.time_interpretations import time_interpretations
+import locale
+
+locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 
 
 def get_user_time_statistics(session: Session, tg_id: int):
@@ -45,6 +48,12 @@ def fetch_stat_for_time_range(message, start_date, end_date):
         if not user:
             response = "Пользователь не найден."
             return response
+        print('=' * 50)
+        print(start_date)
+        print(end_date)
+        print('=' * 50)
+        # 2024-11-04 15:20:09.869816
+        # 2024-11-10 15:20:09.869816
 
         # Получаем все выборы времени для данного пользователя за указанный промежуток
         time_selections = session.query(TimeSelection).filter(
@@ -56,7 +65,7 @@ def fetch_stat_for_time_range(message, start_date, end_date):
         ).all()
 
         if not time_selections:
-            response = f"У вас нет выборов времени с {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')}."
+            response = f"У вас нет выборов времени с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}."
             return response
 
         time_stats = defaultdict(int)
@@ -70,7 +79,8 @@ def fetch_stat_for_time_range(message, start_date, end_date):
         sorted_time_stats = sorted(time_stats.items(), key=lambda x: x[1], reverse=True)
 
         # Формируем ответ с трактовками
-        response = f"<b>Статистика с {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')}:</b>\n\n"
+        response = f"<b>Статистика с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}:</b>\n\n"
+
         for time_choice, count in sorted_time_stats:
             # Получаем трактовку времени
             interpretation = session.query(TimeChoice).filter_by(choice=time_choice).first()
@@ -80,5 +90,5 @@ def fetch_stat_for_time_range(message, start_date, end_date):
         # Удалите пустые строки в конце ответа
         response = response.strip()
 
-        # Отправляем сообщение с результатами
+        # Возвращаем результат
         return response

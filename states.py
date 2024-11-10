@@ -6,6 +6,7 @@ user_states = {}
 # Возможные состояния
 STATE_AWAITING_START_DATE = "awaiting_start_date"
 STATE_AWAITING_END_DATE = "awaiting_end_date"
+STATE_AWAITING_PREDEFINED_RANGE = "awaiting_predefined_range"
 
 
 # Функции для работы с состояниями

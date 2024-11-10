@@ -27,7 +27,7 @@ class TelegramCalendar:
         keyboard.add(InlineKeyboardButton(f'{calendar.month_name[month]} {year}', callback_data='ignore'))
 
         # Дни недели (вы можете перевести на нужный язык)
-        days_of_week: List[str] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        days_of_week: List[str] = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
         keyboard.add(*[InlineKeyboardButton(day, callback_data='ignore') for day in days_of_week])
 
         # Заполнение дней месяца

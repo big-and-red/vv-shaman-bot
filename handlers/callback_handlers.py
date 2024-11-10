@@ -1,12 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from telebot import TeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from config import config_instance
 from db_helpers.models import User, TimeSelection, SessionLocal, TimeChoice, TimeRange
 from data_interpretations.time_interpretations import time_interpretations
 from handlers.command_handlers import calendar_instance
-from states import clear_user_state, STATE_AWAITING_END_DATE, set_user_state, STATE_AWAITING_START_DATE, get_user_state
+from states import clear_user_state, STATE_AWAITING_END_DATE, set_user_state, STATE_AWAITING_START_DATE, get_user_state, \
+    STATE_AWAITING_PREDEFINED_RANGE
 from utils.message_utils import generate_time_choice_buttons, generate_time_range_buttons
 from utils.stat_utils import fetch_stat_for_time_range
 
@@ -124,6 +126,8 @@ def register_callback_handlers(bot: TeleBot):
                 start_date = state.get("start_date")
                 if start_date:
                     end_date = selected_date
+                    start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
                     # Логируем начальную и конечную даты
                     print(
@@ -172,3 +176,58 @@ def register_callback_handlers(bot: TeleBot):
                     print(f"Ошибка при обновлении сообщения: {str(e)}")
             else:
                 print("Ошибка: неверные значения года или месяца при переключении.")
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("stat_range_"))
+    def handle_range_callback(call):
+        user_id = call.message.chat.id
+        state = get_user_state(user_id)
+
+        bot.answer_callback_query(call.id)
+
+        if not state or state.get('state') != STATE_AWAITING_PREDEFINED_RANGE:
+            bot.send_message(user_id, "Пожалуйста, начните заново командой /stat_range.")
+            return
+
+        callback_data = call.data
+        now = datetime.now()
+        config_instance.logger.info(call.data)
+
+        if callback_data == "stat_range_this_week":
+            start_of_week = now - timedelta(days=now.weekday())
+            end_of_week = now
+
+            start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_of_week = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        elif callback_data == "stat_range_last_week":
+            start_of_week = now - timedelta(days=now.weekday() + 7)
+            end_of_week = start_of_week + timedelta(days=6)
+
+            start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_of_week = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        elif callback_data == "stat_range_this_month":
+            start_of_week = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_of_week = now
+
+            end_of_week = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        elif callback_data == "stat_range_calendar":
+            set_user_state(user_id, STATE_AWAITING_START_DATE)
+
+            calendar_markup = calendar_instance.create_calendar(now.year, now.month)
+            bot.send_message(user_id, "Выберите начальную дату:", reply_markup=calendar_markup)
+            return
+        else:
+            bot.send_message(user_id, "Неизвестный выбор. Пожалуйста, попробуйте снова.")
+            return
+
+        # Получаем статистику за выбранный промежуток
+        print("message", call.message)
+        response = fetch_stat_for_time_range(call.message, start_of_week, end_of_week)
+
+        # Очищаем состояние
+        clear_user_state(user_id)
+
+        # Отправляем ответ
+        bot.send_message(user_id, response, parse_mode='HTML')
