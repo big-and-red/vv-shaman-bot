@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from config import Config
-from db_helpers.models import User, TimeSelection, Base
+from db_helpers.models import Base
 
 from alembic import context
 

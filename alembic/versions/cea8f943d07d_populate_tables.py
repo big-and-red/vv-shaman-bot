@@ -1,23 +1,23 @@
-"""populate time_choices
+"""Populate tables
 
-Revision ID: 10e04fc0b065
-Revises: 4dff3b4a5446
-Create Date: 2024-10-01 00:39:42.757037
+Revision ID: cea8f943d07d
+Revises: 8e7d479f5622
+Create Date: 2024-11-10 16:18:21.072664
 
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy import insert
-from sqlalchemy import text
+from sqlalchemy import insert, text
 
-from db_helpers.models import TimeChoice, TimeRange
+from data_interpretations.numbers_interpretations import numbers_interpretations
 from data_interpretations.time_interpretations import time_interpretations
+from db_helpers.models import NumberChoice, TimeChoice, TimeRange
 
 # revision identifiers, used by Alembic.
-revision: str = '10e04fc0b065'
-down_revision: Union[str, None] = '4dff3b4a5446'
+revision: str = 'cea8f943d07d'
+down_revision: Union[str, None] = '8e7d479f5622'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -40,7 +40,17 @@ def upgrade():
                 time_range_id=time_range_id
             ))
 
+            # Наполнение таблицы NumberChoice, используя объект модели NumberChoice
+    for number, interpretation in numbers_interpretations.items():
+        op.execute(
+            insert(NumberChoice).values(
+                number=number,
+                interpretation=interpretation
+            )
+        )
+
 
 def downgrade():
     op.execute("DELETE FROM time_choices")
     op.execute("DELETE FROM time_ranges")
+    op.execute("DELETE FROM numbers_choices")

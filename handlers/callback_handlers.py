@@ -4,7 +4,7 @@ from telebot import TeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import config_instance
-from db_helpers.models import User, TimeSelection, SessionLocal, TimeChoice, TimeRange
+from db_helpers.models import User, TimeSelection, SessionLocal, TimeChoice, TimeRange, NumberSelection, NumberChoice
 from data_interpretations.time_interpretations import time_interpretations
 from handlers.command_handlers import calendar_instance
 from states import clear_user_state, STATE_AWAITING_END_DATE, set_user_state, STATE_AWAITING_START_DATE, get_user_state, \
@@ -231,3 +231,41 @@ def register_callback_handlers(bot: TeleBot):
 
         # Отправляем ответ
         bot.send_message(user_id, response, parse_mode='HTML')
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("choose_number:"))
+    def handle_number_choice(call):
+        # Получаем ID выбранного числа из callback_data
+        number_choice_id = int(call.data.split(":")[1])
+
+        with SessionLocal() as session:
+            # Получаем выбранное число и его интерпретацию
+            number_choice = session.query(NumberChoice).filter_by(id=number_choice_id).first()
+
+            if number_choice is None:
+                bot.send_message(call.message.chat.id, "Неверный выбор.")
+                return
+
+            # Предположим, что `user_id` можно получить из call.message.from_user.id
+            user_id = call.from_user.id
+            print(user_id)
+
+            # Проверяем, существует ли пользователь
+            user = session.query(User).filter_by(tg_id=user_id).first()
+            print(user)
+            if user is None:
+                # Если пользователя нет, можно вернуть ошибку или создать пользователя
+                bot.send_message(call.message.chat.id, "Пользователь не найден.")
+                return
+
+            # Создаем новую запись в таблице number_selections
+            new_selection = NumberSelection(
+                user_id=user.id,
+                number_choice_id=number_choice.id
+            )
+            session.add(new_selection)
+            session.commit()
+
+            # Отправляем пользователю интерпретацию выбранного числа
+            response_message = f"Вы выбрали число {number_choice.number}.\nИнтерпретация: {number_choice.interpretation}"
+            bot.send_message(call.message.chat.id, response_message)
+

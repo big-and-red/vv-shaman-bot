@@ -6,7 +6,7 @@ from telebot import TeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import config_instance
-from db_helpers.models import SessionLocal, TimeChoice, TimeRange, TimeSelection, User
+from db_helpers.models import SessionLocal, TimeChoice, TimeRange, TimeSelection, User, NumberChoice
 from data_interpretations.time_interpretations import time_interpretations
 from states import set_user_state, STATE_AWAITING_START_DATE, STATE_AWAITING_PREDEFINED_RANGE
 from utils.inline_calendar import TelegramCalendar
@@ -24,7 +24,7 @@ def register_command_handlers(bot: TeleBot):
         with SessionLocal() as session:
             user = session.query(User).filter_by(tg_id=message.from_user.id).first()
             if not user:
-                user = User(username=message.from_user.username, tg_id=str(message.from_user.id))
+                user = User(username=message.from_user.username, tg_id=message.from_user.id)
                 session.add(user)  # Добавляем пользователя в сессию, если он новый
                 session.commit()
 
@@ -35,8 +35,8 @@ def register_command_handlers(bot: TeleBot):
             "— это подсказка прямо в лоб.\n\n"
             "*Команды*\n"
             "*/time* — Добавить временной знак.\n"
-            "*/stat* — Твоя статистика.\n"
-            "*/list* — Полный список временных знаков.\n\n"
+            "*/stat* — Твоя общая статистика.\n"
+            "*/time_list* — Полный список временных знаков.\n\n"
             "Подписывайтесь на открытые каналы:\n"
             "[Артём ВВШ](https://t.me/strong_mvp)\n"
             "[Главком](https://t.me/arsenmarkarian)\n\n"
@@ -55,7 +55,49 @@ def register_command_handlers(bot: TeleBot):
 
             bot.send_message(message.chat.id, response_message, reply_markup=markup)
 
-    @bot.message_handler(commands=['list'])
+    @bot.message_handler(commands=['number'])
+    def send_number_choices(message):
+        with SessionLocal() as session:
+            # Получаем все доступные числа и их интерпретации
+            number_choices = session.query(NumberChoice).all()
+
+            # Разделяем числа на две категории
+            left_column = [choice for choice in number_choices if choice.number < 10]  # Числа от 0 до 9
+            right_column = [choice for choice in number_choices if choice.number >= 111]  # Числа от 111 до 999
+
+            # Формируем сообщение и кнопки
+            response_message = "Выберите цифровое значение:"
+            markup = InlineKeyboardMarkup()
+
+            # Сравниваем длину списков, чтобы избежать IndexError
+            max_length = max(len(left_column), len(right_column))
+
+            for i in range(max_length):
+                # Берем элемент из левого столбца, если он существует
+                left_button = InlineKeyboardButton(
+                    text=str(left_column[i].number),
+                    callback_data=f"choose_number:{left_column[i].id}"
+                ) if i < len(left_column) else None
+
+                # Берем элемент из правого столбца, если он существует
+                right_button = InlineKeyboardButton(
+                    text=str(right_column[i].number),
+                    callback_data=f"choose_number:{right_column[i].id}"
+                ) if i < len(right_column) else None
+
+                # Добавляем кнопки в строку. Если обе кнопки существуют — добавляем их обе, если нет — только существующую
+                row = [left_button] if left_button else []
+                if right_button:
+                    row.append(right_button)
+
+                # Добавляем строку в разметку
+                markup.row(*row)
+
+            print(message.from_user.id, "id")
+            # Отправляем сообщение с кнопками
+            bot.send_message(message.chat.id, response_message, reply_markup=markup)
+
+    @bot.message_handler(commands=['time_list'])
     def list_interpretations(message):
         user_id = message.from_user.id
         # if not is_user_subscribed(user_id, bot):
@@ -92,14 +134,11 @@ def register_command_handlers(bot: TeleBot):
 
             send_long_message(bot, message.chat.id, response, parse_mode='HTML')
 
-    @bot.message_handler(commands=['stat'])
+    @bot.message_handler(commands=['all_time_stat'])
     def stat_time_selections(message):
         with SessionLocal() as session:
             # Находим пользователя по tg_id
             user = session.query(User).filter_by(tg_id=message.chat.id).first()
-            print(user.id)
-            print(user.tg_id)
-            print('*' * 15)
 
             if not user:
                 response = "Пользователь не найден."

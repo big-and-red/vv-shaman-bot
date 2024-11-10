@@ -15,6 +15,8 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     tg_id = Column(Integer, unique=True)
     selections = relationship("TimeSelection", back_populates="user")
+    number_selections = relationship("NumberSelection", back_populates="user")
+
 
 
 class TimeSelection(Base):
@@ -47,6 +49,32 @@ class TimeChoice(Base):
     time_range = relationship("TimeRange", back_populates="choices")  # Уже есть
 
 
+class NumberChoice(Base):
+    __tablename__ = "numbers_choices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    number = Column(Integer, index=True)
+    interpretation = Column(String)
+
+    # Связь с NumberSelection
+    selections = relationship("NumberSelection", back_populates="number_choice")
+
+
+class NumberSelection(Base):
+    __tablename__ = 'number_selections'
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    number_choice_id = Column(Integer, ForeignKey('numbers_choices.id'), nullable=False)
+
+    # Связи
+    user = relationship("User", back_populates="number_selections")
+    number_choice = relationship("NumberChoice")
+
+    # Время выбора (опционально)
+    timestamp = Column(DateTime, server_default=func.now())
+
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
