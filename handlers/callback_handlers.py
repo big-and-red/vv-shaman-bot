@@ -60,7 +60,7 @@ def register_callback_handlers(bot: TeleBot):
             markup.add(add_more_button)
             # Отправляем интерпретацию выбора
 
-            bot.send_message(call.message.chat.id, f"*{time_choice.choice}*: {interpretation}", parse_mode="Markdown",
+            bot.send_message(call.message.chat.id, f"*{time_choice.choice}*: {interpretation}", # parse_mode
                              reply_markup=markup)
 
             session.commit()
@@ -144,7 +144,7 @@ def register_callback_handlers(bot: TeleBot):
 
                     # Очищаем состояние
                     clear_user_state(user_id)
-                    bot.send_message(call.message.chat.id, response, parse_mode='Markdown')
+                    bot.send_message(call.message.chat.id, response) # parse_mode
 
         # Если переключается месяц
         elif calendar_response[0] is not None or calendar_response[1] is not None:
@@ -222,7 +222,7 @@ def register_callback_handlers(bot: TeleBot):
         stat_type = get_user_state(user_id).get('stat_type')
         response = fetch_stat_for_time_range(call.message, start_of_week, end_of_week, stat_type)
         clear_user_state(user_id)
-        bot.send_message(user_id, response, parse_mode='Markdown')
+        bot.send_message(user_id, response) # parse_mode
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("stat_type_"))
     def handle_stat_type_selection(call):
@@ -291,7 +291,7 @@ def register_callback_handlers(bot: TeleBot):
 
             # Отправляем пользователю интерпретацию выбранного числа
             response_message = f"Вы выбрали число *{number_choice.number}*.\n\n*Интерпретация:* \n{number_choice.interpretation}"
-            bot.send_message(call.message.chat.id, response_message, parse_mode='Markdown')
+            bot.send_message(call.message.chat.id, response_message) # parse_mode
 
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("all_stat_"))
@@ -306,7 +306,7 @@ def register_callback_handlers(bot: TeleBot):
                     chat_id=call.message.chat.id,
                     message_id=call.message.message_id,
                     text="Пользователь не найден.",
-                    parse_mode='Markdown'
+                    # parse_mode
                 )
                 return
 
@@ -319,7 +319,7 @@ def register_callback_handlers(bot: TeleBot):
                         chat_id=call.message.chat.id,
                         message_id=call.message.message_id,
                         text="Вы ещё не добавляли время.",
-                        parse_mode='Markdown'
+                        # parse_mode='Markdown'
                     )
                     return
 
@@ -344,7 +344,7 @@ def register_callback_handlers(bot: TeleBot):
                         chat_id=call.message.chat.id,
                         message_id=call.message.message_id,
                         text="Вы ещё не добавляли числа.",
-                        parse_mode='Markdown'
+                        # parse_mode='Markdown'
                     )
                     return
 
@@ -361,7 +361,7 @@ def register_callback_handlers(bot: TeleBot):
                         response += f"*{number}*: {count} раз(а) - {interpretation.interpretation}\n\n"
 
             response = response.strip()
-            send_long_message(bot, call.message.chat.id, response, parse_mode='Markdown')
+            send_long_message(bot, call.message.chat.id, response)  # parse_mode
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("list_"))
     def handle_list_selection(call):
@@ -398,4 +398,4 @@ def register_callback_handlers(bot: TeleBot):
                     response += f"*{safe_number}*: {safe_interpretation}\n\n"
 
             response = response.strip()
-            send_long_message(bot, call.message.chat.id, response, parse_mode='Markdown')
+            send_long_message(bot, call.message.chat.id, response) # parse_mode
