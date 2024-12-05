@@ -35,12 +35,14 @@ def register_command_handlers(bot: TeleBot):
             "— это подсказка прямо в лоб.\n\n"
             "*Команды*\n"
             "*/time* — Добавить временной знак.\n"
-            "*/stat* — Твоя общая статистика.\n"
-            "*/time_list* — Полный список временных знаков.\n\n"
+            "*/number* — Добавить числовой знак.\n"
+            "*/stat_range* — Посмотреть статистику в промежутке (время/числа).\n"
+            "*/all_stat* — Общая статистика (время/числа).\n"
+            "*/list* — Полный список временных знаков (время/числа).\n\n"
             "Подписывайтесь на открытые каналы:\n"
             "[Артём ВВШ](https://t.me/strong_mvp)\n"
             "[Главком](https://t.me/arsenmarkarian)\n\n"
-            "Автор бота — [Леон](https://t.me/smthng_hero)"
+            "Автор бота — [Leon](https://t.me/smthng_hero)"
         )
         bot.send_message(message.chat.id, response_message, parse_mode="Markdown")
 
