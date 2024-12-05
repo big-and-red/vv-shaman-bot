@@ -144,7 +144,7 @@ def register_callback_handlers(bot: TeleBot):
 
                     # Очищаем состояние
                     clear_user_state(user_id)
-                    bot.send_message(call.message.chat.id, response, parse_mode='HTML')
+                    bot.send_message(call.message.chat.id, response, parse_mode='Markdown')
 
         # Если переключается месяц
         elif calendar_response[0] is not None or calendar_response[1] is not None:
@@ -222,7 +222,7 @@ def register_callback_handlers(bot: TeleBot):
         stat_type = get_user_state(user_id).get('stat_type')
         response = fetch_stat_for_time_range(call.message, start_of_week, end_of_week, stat_type)
         clear_user_state(user_id)
-        bot.send_message(user_id, response, parse_mode='HTML')
+        bot.send_message(user_id, response, parse_mode='Markdown')
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("stat_type_"))
     def handle_stat_type_selection(call):
@@ -306,7 +306,7 @@ def register_callback_handlers(bot: TeleBot):
                     chat_id=call.message.chat.id,
                     message_id=call.message.message_id,
                     text="Пользователь не найден.",
-                    parse_mode='HTML'
+                    parse_mode='Markdown'
                 )
                 return
 
@@ -319,7 +319,7 @@ def register_callback_handlers(bot: TeleBot):
                         chat_id=call.message.chat.id,
                         message_id=call.message.message_id,
                         text="Вы ещё не добавляли время.",
-                        parse_mode='HTML'
+                        parse_mode='Markdown'
                     )
                     return
 
@@ -328,12 +328,12 @@ def register_callback_handlers(bot: TeleBot):
                     time_stats[selection.time_choice.choice] += 1
 
                 sorted_stats = sorted(time_stats.items(), key=lambda x: x[1], reverse=True)
-                response = "<b>Статистика временных знаков за все время:</b>\n\n"
+                response = "*Статистика временных знаков за все время:*\n\n"
 
                 for time_choice, count in sorted_stats:
                     interpretation = session.query(TimeChoice).filter_by(choice=time_choice).first()
                     if interpretation:
-                        response += f"<b>{time_choice}</b>: {count} раз(а) - {interpretation.interpretation}\n\n"
+                        response += f"*{time_choice}*: {count} раз(а) - {interpretation.interpretation}\n\n"
 
             elif stat_type == "numbers":
                 # Получаем все выборы чисел для данного пользователя
@@ -344,7 +344,7 @@ def register_callback_handlers(bot: TeleBot):
                         chat_id=call.message.chat.id,
                         message_id=call.message.message_id,
                         text="Вы ещё не добавляли числа.",
-                        parse_mode='HTML'
+                        parse_mode='Markdown'
                     )
                     return
 
@@ -353,15 +353,15 @@ def register_callback_handlers(bot: TeleBot):
                     number_stats[selection.number_choice.number] += 1
 
                 sorted_stats = sorted(number_stats.items(), key=lambda x: x[1], reverse=True)
-                response = "<b>Статистика чисел за все время:</b>\n\n"
+                response = "*Статистика чисел за все время:*\n\n"
 
                 for number, count in sorted_stats:
                     interpretation = session.query(NumberChoice).filter_by(number=number).first()
                     if interpretation:
-                        response += f"<b>{number}</b>: {count} раз(а) - {interpretation.interpretation}\n\n"
+                        response += f"*{number}*: {count} раз(а) - {interpretation.interpretation}\n\n"
 
             response = response.strip()
-            send_long_message(bot, call.message.chat.id, response, parse_mode='HTML')
+            send_long_message(bot, call.message.chat.id, response, parse_mode='Markdown')
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("list_"))
     def handle_list_selection(call):
@@ -370,7 +370,7 @@ def register_callback_handlers(bot: TeleBot):
         with SessionLocal() as session:
             if list_type == "time":
                 time_choices = session.query(TimeChoice).all()
-                response = "<b>Трактовки времени:</b>\n\n"
+                response = "*Трактовки времени:*\n\n"
                 interpretations = {}
 
                 for choice in time_choices:
@@ -379,23 +379,23 @@ def register_callback_handlers(bot: TeleBot):
                     interpretations[choice.time_range.time_range][choice.choice] = choice.interpretation
 
                 for period, choices in interpretations.items():
-                    response += f"<b>{period}</b>\n"
+                    response += f"*{period}*\n"
                     for time, interpretation in choices.items():
                         safe_time = time.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                         safe_interpretation = interpretation.replace('&', '&amp;').replace('<', '&lt;').replace('>',
                                                                                                                 '&gt;')
-                        response += f"<b>{safe_time}</b>: {safe_interpretation}\n"
+                        response += f"*{safe_time}*: {safe_interpretation}\n"
                     response += "\n"
 
             elif list_type == "numbers":
                 number_choices = session.query(NumberChoice).all()
-                response = "<b>Трактовки чисел:</b>\n\n"
+                response = "*Трактовки чисел:*\n\n"
 
                 for choice in number_choices:
                     safe_number = str(choice.number).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     safe_interpretation = choice.interpretation.replace('&', '&amp;').replace('<', '&lt;').replace('>',
                                                                                                                    '&gt;')
-                    response += f"<b>{safe_number}</b>: {safe_interpretation}\n\n"
+                    response += f"*{safe_number}*: {safe_interpretation}\n\n"
 
             response = response.strip()
-            send_long_message(bot, call.message.chat.id, response, parse_mode='HTML')
+            send_long_message(bot, call.message.chat.id, response, parse_mode='Markdown')
