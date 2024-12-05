@@ -333,7 +333,7 @@ def register_callback_handlers(bot: TeleBot):
                 for time_choice, count in sorted_stats:
                     interpretation = session.query(TimeChoice).filter_by(choice=time_choice).first()
                     if interpretation:
-                        response += f"<b>{time_choice}</b>: {count} раз(а) - {interpretation.interpretation}\n"
+                        response += f"<b>{time_choice}</b>: {count} раз(а) - {interpretation.interpretation}\n\n"
 
             elif stat_type == "numbers":
                 # Получаем все выборы чисел для данного пользователя
@@ -395,7 +395,7 @@ def register_callback_handlers(bot: TeleBot):
                     safe_number = str(choice.number).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     safe_interpretation = choice.interpretation.replace('&', '&amp;').replace('<', '&lt;').replace('>',
                                                                                                                    '&gt;')
-                    response += f"<b>{safe_number}</b>: {safe_interpretation}\n"
+                    response += f"<b>{safe_number}</b>: {safe_interpretation}\n\n"
 
             response = response.strip()
             send_long_message(bot, call.message.chat.id, response, parse_mode='HTML')
