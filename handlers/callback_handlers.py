@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime, timedelta
 
 from telebot import TeleBot
@@ -8,8 +9,8 @@ from db_helpers.models import User, TimeSelection, SessionLocal, TimeChoice, Tim
 from data_interpretations.time_interpretations import time_interpretations
 from handlers.command_handlers import calendar_instance
 from states import clear_user_state, STATE_AWAITING_END_DATE, set_user_state, STATE_AWAITING_START_DATE, get_user_state, \
-    STATE_AWAITING_PREDEFINED_RANGE
-from utils.message_utils import generate_time_choice_buttons, generate_time_range_buttons
+    STATE_AWAITING_PREDEFINED_RANGE, STATE_AWAITING_STAT_TYPE
+from utils.message_utils import generate_time_choice_buttons, generate_time_range_buttons, send_long_message
 from utils.stat_utils import fetch_stat_for_time_range
 
 
@@ -138,7 +139,8 @@ def register_callback_handlers(bot: TeleBot):
                         start_date, end_date = end_date, start_date
 
                     # Вызываем функцию для получения статистики за промежуток
-                    response = fetch_stat_for_time_range(call.message, start_date, end_date)
+                    stat_type = get_user_state(user_id).get('stat_type')
+                    response = fetch_stat_for_time_range(call.message, start_date, end_date, stat_type)
 
                     # Очищаем состояние
                     clear_user_state(user_id)
@@ -188,49 +190,71 @@ def register_callback_handlers(bot: TeleBot):
             bot.send_message(user_id, "Пожалуйста, начните заново командой /stat_range.")
             return
 
+        stat_type = state.get('stat_type', 'time')  # По умолчанию время
         callback_data = call.data
         now = datetime.now()
-        config_instance.logger.info(call.data)
 
         if callback_data == "stat_range_this_week":
             start_of_week = now - timedelta(days=now.weekday())
             end_of_week = now
-
             start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_week = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         elif callback_data == "stat_range_last_week":
             start_of_week = now - timedelta(days=now.weekday() + 7)
             end_of_week = start_of_week + timedelta(days=6)
-
             start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_week = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         elif callback_data == "stat_range_this_month":
             start_of_week = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_of_week = now
-
             end_of_week = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         elif callback_data == "stat_range_calendar":
-            set_user_state(user_id, STATE_AWAITING_START_DATE)
-
+            set_user_state(user_id, STATE_AWAITING_START_DATE, {'stat_type': stat_type})
             calendar_markup = calendar_instance.create_calendar(now.year, now.month)
             bot.send_message(user_id, "Выберите начальную дату:", reply_markup=calendar_markup)
             return
         else:
             bot.send_message(user_id, "Неизвестный выбор. Пожалуйста, попробуйте снова.")
             return
-
-        # Получаем статистику за выбранный промежуток
-        print("message", call.message)
-        response = fetch_stat_for_time_range(call.message, start_of_week, end_of_week)
-
-        # Очищаем состояние
+        stat_type = get_user_state(user_id).get('stat_type')
+        response = fetch_stat_for_time_range(call.message, start_of_week, end_of_week, stat_type)
         clear_user_state(user_id)
-
-        # Отправляем ответ
         bot.send_message(user_id, response, parse_mode='HTML')
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("stat_type_"))
+    def handle_stat_type_selection(call):
+        user_id = call.message.chat.id
+        state = get_user_state(user_id)
+
+        bot.answer_callback_query(call.id)
+
+        if not state or state.get('state') != STATE_AWAITING_STAT_TYPE:
+            bot.send_message(user_id, "Пожалуйста, начните заново командой /stat_range.")
+            return
+
+        # Сохраняем выбранный тип статистики
+        stat_type = call.data.replace("stat_type_", "")
+        print(stat_type)
+        set_user_state(user_id, STATE_AWAITING_PREDEFINED_RANGE, {'stat_type': stat_type})
+
+        # Создаём инлайн-клавиатуру для выбора периода
+        keyboard = InlineKeyboardMarkup(row_width=2)
+        btn_this_week = InlineKeyboardButton(text="Эта неделя", callback_data="stat_range_this_week")
+        btn_last_week = InlineKeyboardButton(text="Прошлая неделя", callback_data="stat_range_last_week")
+        btn_this_month = InlineKeyboardButton(text="Этот месяц", callback_data="stat_range_this_month")
+        btn_calendar = InlineKeyboardButton(text="Календарь", callback_data="stat_range_calendar")
+
+        keyboard.add(btn_this_week, btn_last_week, btn_this_month, btn_calendar)
+
+        bot.edit_message_text(
+            chat_id=user_id,
+            message_id=call.message.message_id,
+            text="Выберите временной промежуток для статистики:",
+            reply_markup=keyboard
+        )
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("choose_number:"))
     def handle_number_choice(call):
@@ -266,6 +290,112 @@ def register_callback_handlers(bot: TeleBot):
             session.commit()
 
             # Отправляем пользователю интерпретацию выбранного числа
-            response_message = f"Вы выбрали число {number_choice.number}.\nИнтерпретация: {number_choice.interpretation}"
-            bot.send_message(call.message.chat.id, response_message)
+            response_message = f"Вы выбрали число *{number_choice.number}*.\n\n*Интерпретация:* \n{number_choice.interpretation}"
+            bot.send_message(call.message.chat.id, response_message, parse_mode='Markdown')
 
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("all_stat_"))
+    def handle_all_stat_selection(call):
+        stat_type = call.data.replace("all_stat_", "")
+
+        with SessionLocal() as session:
+            user = session.query(User).filter_by(tg_id=call.message.chat.id).first()
+
+            if not user:
+                bot.edit_message_text(
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                    text="Пользователь не найден.",
+                    parse_mode='HTML'
+                )
+                return
+
+            if stat_type == "time":
+                # Получаем все выборы времени для данного пользователя
+                time_selections = session.query(TimeSelection).filter_by(user_id=user.id).all()
+
+                if not time_selections:
+                    bot.edit_message_text(
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                        text="Вы ещё не добавляли время.",
+                        parse_mode='HTML'
+                    )
+                    return
+
+                time_stats = defaultdict(int)
+                for selection in time_selections:
+                    time_stats[selection.time_choice.choice] += 1
+
+                sorted_stats = sorted(time_stats.items(), key=lambda x: x[1], reverse=True)
+                response = "<b>Статистика временных знаков за все время:</b>\n\n"
+
+                for time_choice, count in sorted_stats:
+                    interpretation = session.query(TimeChoice).filter_by(choice=time_choice).first()
+                    if interpretation:
+                        response += f"<b>{time_choice}</b>: {count} раз(а) - {interpretation.interpretation}\n"
+
+            elif stat_type == "numbers":
+                # Получаем все выборы чисел для данного пользователя
+                number_selections = session.query(NumberSelection).filter_by(user_id=user.id).all()
+
+                if not number_selections:
+                    bot.edit_message_text(
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                        text="Вы ещё не добавляли числа.",
+                        parse_mode='HTML'
+                    )
+                    return
+
+                number_stats = defaultdict(int)
+                for selection in number_selections:
+                    number_stats[selection.number_choice.number] += 1
+
+                sorted_stats = sorted(number_stats.items(), key=lambda x: x[1], reverse=True)
+                response = "<b>Статистика чисел за все время:</b>\n\n"
+
+                for number, count in sorted_stats:
+                    interpretation = session.query(NumberChoice).filter_by(number=number).first()
+                    if interpretation:
+                        response += f"<b>{number}</b>: {count} раз(а) - {interpretation.interpretation}\n\n"
+
+            response = response.strip()
+            send_long_message(bot, call.message.chat.id, response, parse_mode='HTML')
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("list_"))
+    def handle_list_selection(call):
+        list_type = call.data.replace("list_", "")
+
+        with SessionLocal() as session:
+            if list_type == "time":
+                time_choices = session.query(TimeChoice).all()
+                response = "<b>Трактовки времени:</b>\n\n"
+                interpretations = {}
+
+                for choice in time_choices:
+                    if choice.time_range.time_range not in interpretations:
+                        interpretations[choice.time_range.time_range] = {}
+                    interpretations[choice.time_range.time_range][choice.choice] = choice.interpretation
+
+                for period, choices in interpretations.items():
+                    response += f"<b>{period}</b>\n"
+                    for time, interpretation in choices.items():
+                        safe_time = time.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                        safe_interpretation = interpretation.replace('&', '&amp;').replace('<', '&lt;').replace('>',
+                                                                                                                '&gt;')
+                        response += f"<b>{safe_time}</b>: {safe_interpretation}\n"
+                    response += "\n"
+
+            elif list_type == "numbers":
+                number_choices = session.query(NumberChoice).all()
+                response = "<b>Трактовки чисел:</b>\n\n"
+
+                for choice in number_choices:
+                    safe_number = str(choice.number).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    safe_interpretation = choice.interpretation.replace('&', '&amp;').replace('<', '&lt;').replace('>',
+                                                                                                                   '&gt;')
+                    response += f"<b>{safe_number}</b>: {safe_interpretation}\n"
+
+            response = response.strip()
+            send_long_message(bot, call.message.chat.id, response, parse_mode='HTML')

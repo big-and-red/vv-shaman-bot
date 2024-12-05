@@ -8,7 +8,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import config_instance
 from db_helpers.models import SessionLocal, TimeChoice, TimeRange, TimeSelection, User, NumberChoice
 from data_interpretations.time_interpretations import time_interpretations
-from states import set_user_state, STATE_AWAITING_START_DATE, STATE_AWAITING_PREDEFINED_RANGE
+from states import set_user_state, STATE_AWAITING_START_DATE, STATE_AWAITING_PREDEFINED_RANGE, STATE_AWAITING_STAT_TYPE
 from utils.inline_calendar import TelegramCalendar
 from utils.message_utils import generate_time_range_buttons
 from utils.message_utils import send_long_message
@@ -97,100 +97,42 @@ def register_command_handlers(bot: TeleBot):
             # Отправляем сообщение с кнопками
             bot.send_message(message.chat.id, response_message, reply_markup=markup)
 
-    @bot.message_handler(commands=['time_list'])
-    def list_interpretations(message):
-        user_id = message.from_user.id
-        # if not is_user_subscribed(user_id, bot):
-        #     response_message = (
-        #         "Для использования этой команды подпишитесь на следующие каналы:\n"
-        #         "- Αρτέμιος 𝚁𝙴𝚃𝚁𝙴𝙰𝚃𝚂\n"
-        #         "- Вселяющий Веру Шаман"
-        #     )
-        #     bot.send_message(message.chat.id, response_message)
-        #     return
+    @bot.message_handler(commands=['list'])
+    def list_command(message):
+        markup = InlineKeyboardMarkup()
+        time_button = InlineKeyboardButton("Время", callback_data="list_time")
+        numbers_button = InlineKeyboardButton("Числа", callback_data="list_numbers")
+        markup.add(time_button, numbers_button)
 
-        with SessionLocal() as session:
-            time_choices = session.query(TimeChoice).all()  # Получаем все варианты выбора времени
-            response = "<b>Трактовки времени:</b>\n\n"
-            interpretations = {}
+        bot.send_message(
+            message.chat.id,
+            "Выберите что хотите посмотреть:",
+            reply_markup=markup
+        )
 
-            for choice in time_choices:
-                # Используем time_range вместо name
-                if choice.time_range.time_range not in interpretations:
-                    interpretations[choice.time_range.time_range] = {}
-                interpretations[choice.time_range.time_range][choice.choice] = choice.interpretation
+    @bot.message_handler(commands=['all_stat'])
+    def all_stat_command(message):
+        markup = InlineKeyboardMarkup()
+        time_button = InlineKeyboardButton("Время", callback_data="all_stat_time")
+        numbers_button = InlineKeyboardButton("Числа", callback_data="all_stat_numbers")
+        markup.add(time_button, numbers_button)
 
-            for period, choices in interpretations.items():
-                response += f"<b>{period}</b>\n"  # Используем time_range для заголовка
-                for time, interpretation in choices.items():
-                    # Экранирование спецсимволов для HTML
-                    safe_time = time.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                    safe_interpretation = interpretation.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                    response += f"<b>{safe_time}</b>: {safe_interpretation}\n"
-                response += "\n"  # Добавляем дополнительный перенос строки между периодами
-
-            # Удалите пустые строки в конце ответа
-            response = response.strip()
-
-            send_long_message(bot, message.chat.id, response, parse_mode='HTML')
-
-    @bot.message_handler(commands=['all_time_stat'])
-    def stat_time_selections(message):
-        with SessionLocal() as session:
-            # Находим пользователя по tg_id
-            user = session.query(User).filter_by(tg_id=message.chat.id).first()
-
-            if not user:
-                response = "Пользователь не найден."
-                send_long_message(bot, message.chat.id, response, parse_mode='HTML')
-                return
-
-            # Получаем все выборы времени для данного пользователя
-            time_selections = session.query(TimeSelection).filter_by(user_id=user.id).all()
-
-            if not time_selections:
-                response = "Вы ещё не добавляли время."
-                send_long_message(bot, message.chat.id, response, parse_mode='HTML')
-                return
-
-            time_stats = defaultdict(int)
-
-            # Собираем статистику по временам
-            for selection in time_selections:
-                # Увеличиваем счетчик для выбранного времени
-                time_stats[selection.time_choice.choice] += 1
-
-            # Сортируем статистику по количеству выборов (от большего к меньшему)
-            sorted_time_stats = sorted(time_stats.items(), key=lambda x: x[1], reverse=True)
-
-            # Формируем ответ с трактовками
-            response = "<b>Статистика временных знаков:</b>\n\n"
-            for time_choice, count in sorted_time_stats:
-                # Получаем трактовку времени
-                interpretation = session.query(TimeChoice).filter_by(choice=time_choice).first()
-                if interpretation:
-                    response += f"<b>{time_choice}</b>: {count} раз(а) - {interpretation.interpretation}\n"
-
-            # Удалите пустые строки в конце ответа
-            response = response.strip()
-
-            send_long_message(bot, message.chat.id, response, parse_mode='HTML')
+        bot.send_message(
+            message.chat.id,
+            "Выберите тип статистики:",
+            reply_markup=markup
+        )
 
     @bot.message_handler(commands=['stat_range'])
     def stat_time_range(message):
         user_id = message.chat.id
-        # Устанавливаем новое состояние, ожидаем выбора предопределённого диапазона
-        set_user_state(user_id, STATE_AWAITING_PREDEFINED_RANGE)
-        config_instance.logger.info("stat_range")
-        # Создаём инлайн-клавиатуру
+        set_user_state(user_id, STATE_AWAITING_STAT_TYPE)
+
+        # Создаём клавиатуру для выбора типа статистики
         keyboard = InlineKeyboardMarkup(row_width=2)
-        btn_this_week = InlineKeyboardButton(text="Эта неделя", callback_data="stat_range_this_week")
-        btn_last_week = InlineKeyboardButton(text="Прошлая неделя", callback_data="stat_range_last_week")
-        btn_this_month = InlineKeyboardButton(text="Этот месяц", callback_data="stat_range_this_month")
-        btn_calendar = InlineKeyboardButton(text="Календарь", callback_data="stat_range_calendar")
+        btn_time = InlineKeyboardButton(text="Время", callback_data="stat_type_time")
+        btn_numbers = InlineKeyboardButton(text="Числа", callback_data="stat_type_numbers")
 
-        # Добавляем кнопки в клавиатуру
-        keyboard.add(btn_this_week, btn_last_week, btn_this_month, btn_calendar)
+        keyboard.add(btn_time, btn_numbers)
 
-        # Отправляем сообщение с инлайн-кнопками
-        bot.send_message(user_id, "Выберите временной промежуток для статистики:", reply_markup=keyboard)
+        bot.send_message(user_id, "Выберите тип статистики:", reply_markup=keyboard)

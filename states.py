@@ -7,6 +7,8 @@ user_states = {}
 STATE_AWAITING_START_DATE = "awaiting_start_date"
 STATE_AWAITING_END_DATE = "awaiting_end_date"
 STATE_AWAITING_PREDEFINED_RANGE = "awaiting_predefined_range"
+STATE_AWAITING_STAT_TYPE = 'awaiting_stat_type'
+
 
 
 # Функции для работы с состояниями
