@@ -16,11 +16,23 @@ from utils.stat_utils import get_user_time_statistics
 from utils.sub_channel_checker import is_user_subscribed
 
 calendar_instance = TelegramCalendar(locale="ru")
-logger = logging.getLogger()
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('bot.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
 
 def register_command_handlers(bot: TeleBot):
     @bot.message_handler(commands=['start'])
     def send_welcome(message):
+        logger.debug("————— /start —————")
         with SessionLocal() as session:
             user = session.query(User).filter_by(tg_id=message.from_user.id).first()
             if not user:
