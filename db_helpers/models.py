@@ -18,11 +18,10 @@ class User(Base):
     number_selections = relationship("NumberSelection", back_populates="user")
 
 
-
 class TimeSelection(Base):
     __tablename__ = 'time_selections'
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     time_choice_id = Column(Integer, ForeignKey('time_choices.id', name='fk_time_selection_time_choice'))
     time_choice = relationship("TimeChoice")
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
@@ -63,7 +62,7 @@ class NumberChoice(Base):
 class NumberSelection(Base):
     __tablename__ = 'number_selections'
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     number_choice_id = Column(Integer, ForeignKey('numbers_choices.id'), nullable=False)
 
