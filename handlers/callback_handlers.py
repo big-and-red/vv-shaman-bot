@@ -30,53 +30,47 @@ def register_callback_handlers(bot: TeleBot):
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith('time_'))
     def process_time_choice(call):
-        # Правильное разделение данных
         try:
-            time_range_id, time_choice_id = call.data.split('_')[
-                                            1:]  # Используем split('_') и берем два последних элемента
+            time_range_id, time_choice_id = call.data.split('_')[1:]
         except ValueError:
             bot.send_message(call.message.chat.id, "Неверный формат данных")
             return
 
         with SessionLocal() as session:
             try:
-                # Получаем интерпретацию для выбранного времени
                 time_choice = session.query(TimeChoice).filter_by(id=time_choice_id).first()
 
-                # Проверка существования time_choice
                 if time_choice is None:
                     bot.send_message(call.message.chat.id, "Выбор времени не найден.")
                     return
 
                 interpretation = time_choice.interpretation
 
-                # Получение или создание пользователя
                 user = session.query(User).filter_by(tg_id=str(call.from_user.id)).first()
                 if not user:
                     user = User(
-                        username=call.from_user.username or "Unknown",  # Обработка случая отсутствия username
+                        username=call.from_user.username or "Unknown",
                         tg_id=str(call.from_user.id)
                     )
                     session.add(user)
-                    session.flush()  # Получаем id пользователя до создания time_selection
+                    session.flush()
 
-                # Создаём запись выбора времени
+                # Создаём запись выбора времени с явным указанием UUID
                 time_selection = TimeSelection(
+                    id=uuid.uuid4(),  # Явно указываем UUID
                     time_choice_id=time_choice.id,
                     user_id=user.id
                 )
                 session.add(time_selection)
 
-                # Создаем клавиатуру
                 markup = InlineKeyboardMarkup()
                 add_more_button = InlineKeyboardButton("Добавить ещё", callback_data='add_more')
                 markup.add(add_more_button)
 
-                # Отправляем сообщение
                 bot.send_message(
                     call.message.chat.id,
                     f"*{time_choice.choice}*: {interpretation}",
-                    parse_mode='Markdown',  # Добавлен parse_mode
+                    parse_mode='Markdown',
                     reply_markup=markup
                 )
 
@@ -85,7 +79,7 @@ def register_callback_handlers(bot: TeleBot):
             except Exception as e:
                 session.rollback()
                 bot.send_message(call.message.chat.id, "Произошла ошибка при обработке выбора.")
-                print(f"Error in process_time_choice: {e}")  # Логирование ошибки
+                print(f"Error in process_time_choice: {e}")  # Добавьте вывод конкретной ошибки
 
     @bot.callback_query_handler(func=lambda call: call.data in ['back', 'add_more'])
     def go_back_or_add_more(call):
@@ -166,7 +160,7 @@ def register_callback_handlers(bot: TeleBot):
 
                     # Очищаем состояние
                     clear_user_state(user_id)
-                    bot.send_message(call.message.chat.id, response) # parse_mode
+                    bot.send_message(call.message.chat.id, response)  # parse_mode
 
         # Если переключается месяц
         elif calendar_response[0] is not None or calendar_response[1] is not None:
@@ -244,7 +238,7 @@ def register_callback_handlers(bot: TeleBot):
         stat_type = get_user_state(user_id).get('stat_type')
         response = fetch_stat_for_time_range(call.message, start_of_week, end_of_week, stat_type)
         clear_user_state(user_id)
-        bot.send_message(user_id, response) # parse_mode
+        bot.send_message(user_id, response)  # parse_mode
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("stat_type_"))
     def handle_stat_type_selection(call):
@@ -313,8 +307,7 @@ def register_callback_handlers(bot: TeleBot):
 
             # Отправляем пользователю интерпретацию выбранного числа
             response_message = f"Вы выбрали число *{number_choice.number}*.\n\n*Интерпретация:* \n{number_choice.interpretation}"
-            bot.send_message(call.message.chat.id, response_message) # parse_mode
-
+            bot.send_message(call.message.chat.id, response_message)  # parse_mode
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("all_stat_"))
     def handle_all_stat_selection(call):
@@ -420,4 +413,4 @@ def register_callback_handlers(bot: TeleBot):
                     response += f"*{safe_number}*: {safe_interpretation}\n\n"
 
             response = response.strip()
-            send_long_message(bot, call.message.chat.id, response) # parse_mode
+            send_long_message(bot, call.message.chat.id, response)  # parse_mode
