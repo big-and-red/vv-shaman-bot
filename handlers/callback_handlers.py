@@ -300,6 +300,7 @@ def register_callback_handlers(bot: TeleBot):
 
             # Создаем новую запись в таблице number_selections
             new_selection = NumberSelection(
+                id=uuid.uuid4(),
                 user_id=user.id,
                 number_choice_id=number_choice.id
             )
