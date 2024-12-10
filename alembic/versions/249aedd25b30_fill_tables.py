@@ -1,8 +1,8 @@
-"""Populate tables
+"""fill_tables
 
-Revision ID: cea8f943d07d
-Revises: 8e7d479f5622
-Create Date: 2024-11-10 16:18:21.072664
+Revision ID: 249aedd25b30
+Revises: 6d2550b56dab
+Create Date: 2024-12-10 05:44:10.685965
 
 """
 from typing import Sequence, Union
@@ -16,8 +16,8 @@ from data_interpretations.time_interpretations import time_interpretations
 from db_helpers.models import NumberChoice, TimeChoice, TimeRange
 
 # revision identifiers, used by Alembic.
-revision: str = 'cea8f943d07d'
-down_revision: Union[str, None] = '8e7d479f5622'
+revision: str = '249aedd25b30'
+down_revision: Union[str, None] = '6d2550b56dab'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -1,8 +1,8 @@
 """Init
 
-Revision ID: 8e7d479f5622
+Revision ID: 6d2550b56dab
 Revises: 
-Create Date: 2024-11-10 16:16:05.227981
+Create Date: 2024-12-10 05:43:40.516343
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '8e7d479f5622'
+revision: str = '6d2550b56dab'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -47,7 +47,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
     op.create_table('number_selections',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('number_choice_id', sa.Integer(), nullable=False),
     sa.Column('timestamp', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
@@ -67,7 +67,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_time_choices_choice'), 'time_choices', ['choice'], unique=False)
     op.create_index(op.f('ix_time_choices_id'), 'time_choices', ['id'], unique=False)
     op.create_table('time_selections',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('time_choice_id', sa.Integer(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('timestamp', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
