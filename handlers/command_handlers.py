@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def register_command_handlers(bot: TeleBot):
     @bot.message_handler(commands=['start'])
     def send_welcome(message):
-        logger.debug("————— /start —————")
+        logger.info("————— /start —————")
         with SessionLocal() as session:
             user = session.query(User).filter_by(tg_id=message.from_user.id).first()
             if not user:
