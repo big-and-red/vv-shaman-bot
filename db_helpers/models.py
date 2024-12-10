@@ -1,4 +1,6 @@
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, func
+import uuid
+
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, func, UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
@@ -21,7 +23,7 @@ class User(Base):
 class TimeSelection(Base):
     __tablename__ = 'time_selections'
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     time_choice_id = Column(Integer, ForeignKey('time_choices.id', name='fk_time_selection_time_choice'))
     time_choice = relationship("TimeChoice")
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
@@ -62,7 +64,7 @@ class NumberChoice(Base):
 class NumberSelection(Base):
     __tablename__ = 'number_selections'
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     number_choice_id = Column(Integer, ForeignKey('numbers_choices.id'), nullable=False)
 
