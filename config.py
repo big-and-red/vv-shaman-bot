@@ -17,12 +17,14 @@ class Config:
     POSTGRESQL_DBNAME = os.getenv('POSTGRESQL_DBNAME')
     PG_SCHEMA = os.getenv('PG_SCHEMA')
     PG_DRIVER = os.getenv('PG_DRIVER')
-    SQLALCHEMY_DATABASE_URI = (f'postgresql+{PG_DRIVER}://'
-                               f'{POSTGRESQL_USER}:'
-                               f'{POSTGRESQL_PASSWORD}@'
-                               f'{POSTGRESQL_HOST}:'
-                               f'{POSTGRESQL_PORT}/'
-                               f'{POSTGRESQL_DBNAME}')
+    # SQLALCHEMY_DATABASE_URI = (f'postgresql+{PG_DRIVER}://'
+    #                            f'{POSTGRESQL_USER}:'
+    #                            f'{POSTGRESQL_PASSWORD}@'
+    #                            f'{POSTGRESQL_HOST}:'
+    #                            f'{POSTGRESQL_PORT}/'
+    #                            f'{POSTGRESQL_DBNAME}')
+
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///database.db'
 
     @classmethod
     def init_logger(cls, log_level=logging.INFO):
