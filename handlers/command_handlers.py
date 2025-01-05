@@ -42,21 +42,21 @@ def register_command_handlers(bot: TeleBot):
 
         response_message = (
             "Этот бот поможет тебе записывать знаки Вселенной.\n\n"
-            "*Всякий раз, когда ты видишь время, определенное сочетание цифр — это подсказка.*\n"
+            "<b>Всякий раз, когда ты видишь время, определенное сочетание цифр — это подсказка.</b>\n"
             "Если на протяжении долгого времени тебе раз за разом попадается одно и то же время, минимум 3 раза"
             "— это подсказка прямо в лоб.\n\n"
-            "*Команды*\n"
-            "*/time* — Добавить временной знак.\n"
-            "*/number* — Добавить числовой знак.\n"
-            "*/stat_range* — Посмотреть статистику в промежутке (время/числа).\n"
-            "*/all_stat* — Общая статистика (время/числа).\n"
-            "*/list* — Полный список временных знаков (время/числа).\n\n"
+            "<b>Команды</b>\n"
+            "<b>/time</b> — Добавить временной знак.\n"
+            "<b>/number</b> — Добавить числовой знак.\n"
+            "<b>/stat_range</b> — Посмотреть статистику в промежутке (время/числа).\n"
+            "<b>/all_stat</b> — Общая статистика (время/числа).\n"
+            "<b>/list</b> — Полный список временных знаков (время/числа).\n\n"
             "Подписывайтесь на открытые каналы:\n"
-            "[Артём ВВШ](https://t.me/strong_mvp)\n"
-            "[Главком](https://t.me/arsenmarkarian)\n\n"
-            "Автор бота — [Leon](https://t.me/smthng_hero)"
+            "<a href='https://t.me/strong_mvp'>Артём ВВШ</a>\n"
+            "<a href='https://t.me/arsenmarkarian'>Главком</a>\n\n"
+            "Автор бота — <a href='https://t.me/smthng_hero'>Leon</a>"
         )
-        bot.send_message(message.chat.id, response_message, parse_mode="Markdown")
+        bot.send_message(message.chat.id, response_message, parse_mode="HTML", disable_web_page_preview=True)
 
     @bot.message_handler(commands=['time'])
     def send_welcome(message):
