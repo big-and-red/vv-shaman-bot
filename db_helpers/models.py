@@ -1,5 +1,4 @@
 import uuid
-
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, func, UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -15,6 +14,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
+    # Изменение типа на Integer для согласованности
     tg_id = Column(Integer, unique=True)
     selections = relationship("TimeSelection", back_populates="user")
     number_selections = relationship("NumberSelection", back_populates="user")
@@ -37,7 +37,7 @@ class TimeRange(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     time_range = Column(String, index=True)
-    choices = relationship("TimeChoice", back_populates="time_range")  # Добавлено
+    choices = relationship("TimeChoice", back_populates="time_range")
 
 
 class TimeChoice(Base):
@@ -47,7 +47,7 @@ class TimeChoice(Base):
     choice = Column(String, index=True)
     interpretation = Column(String)
     time_range_id = Column(Integer, ForeignKey('time_ranges.id'))
-    time_range = relationship("TimeRange", back_populates="choices")  # Уже есть
+    time_range = relationship("TimeRange", back_populates="choices")
 
 
 class NumberChoice(Base):
@@ -70,9 +70,9 @@ class NumberSelection(Base):
 
     # Связи
     user = relationship("User", back_populates="number_selections")
-    number_choice = relationship("NumberChoice")
+    number_choice = relationship("NumberChoice", back_populates="selections")
 
-    # Время выбора (опционально)
+    # Время выбора
     timestamp = Column(DateTime, server_default=func.now())
 
 

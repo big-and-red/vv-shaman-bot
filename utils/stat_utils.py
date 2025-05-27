@@ -1,96 +1,135 @@
+import logging
 from collections import defaultdict
+from datetime import datetime
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from db_helpers.models import TimeSelection, User, SessionLocal, TimeChoice, NumberChoice, NumberSelection
-from data_interpretations.time_interpretations import time_interpretations
 import locale
 
-locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+# Настройка логирования
+logger = logging.getLogger(__name__)
+
+try:
+    locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+except locale.Error:
+    logger.warning("Не удалось установить русскую локаль, используется системная локаль")
 
 
 def get_user_time_statistics(session: Session, tg_id: int):
-    # Получаем пользователя по tg_id
-    user = session.query(User).filter(User.tg_id == str(tg_id)).first()
+    """
+    Получает статистику времен для пользователя
 
-    # Если пользователь не найден, возвращаем пустой словарь
-    if not user:
+    :param session: Сессия SQLAlchemy
+    :param tg_id: Telegram ID пользователя
+    :return: Словарь с статистикой
+    """
+    try:
+        user = session.query(User).filter(User.tg_id == tg_id).first()
+
+        # Если пользователь не найден, возвращаем пустой словарь
+        if not user:
+            logger.warning(f"Пользователь с tg_id {tg_id} не найден")
+            return {}
+
+        # Инициализируем словарь для хранения статистики
+        statistics = defaultdict(lambda: {"count": 0, "interpretation": ""})
+
+        # Получаем все выборы времени пользователя
+        time_selections = session.query(TimeSelection).filter_by(user_id=user.id).all()
+
+        # Обрабатываем выборы времени
+        for selection in time_selections:
+            time_choice = selection.time_choice.choice
+            interpretation = selection.time_choice.interpretation
+            statistics[time_choice]["count"] += 1
+            statistics[time_choice]["interpretation"] = interpretation
+
+        return statistics
+    except Exception as e:
+        logger.error(f"Ошибка при получении статистики времени: {e}", exc_info=True)
         return {}
-
-    # Инициализируем словарь для хранения статистики
-    statistics = defaultdict(lambda: {"count": 0, "interpretation": ""})
-
-    # Получаем все выборы времени пользователя
-    time_selections = user.selections
-
-    # Обрабатываем выборы времени
-    for selection in time_selections:
-        time_choice = selection.time_choice.choice
-        interpretation = selection.time_choice.interpretation
-        statistics[time_choice]["count"] += 1
-        statistics[time_choice]["interpretation"] = interpretation
-
-    return statistics
 
 
 def fetch_stat_for_time_range(message, start_date, end_date, stat_type):
-    print('stat', stat_type)
-    with SessionLocal() as session:
-        user = session.query(User).filter_by(tg_id=message.chat.id).first()
+    """
+    Получает статистику за указанный промежуток времени
 
-        if not user:
-            return "Пользователь не найден."
+    :param message: Сообщение пользователя
+    :param start_date: Начальная дата
+    :param end_date: Конечная дата
+    :param stat_type: Тип статистики ('time' или 'numbers')
+    :return: Строка с результатами
+    """
+    logger.info(f"Запрос статистики типа {stat_type} с {start_date} по {end_date}")
 
-        if stat_type == "time":
-            # Существующая логика для времени
-            time_selections = session.query(TimeSelection).filter(
-                and_(
-                    TimeSelection.user_id == user.id,
-                    TimeSelection.timestamp >= start_date,
-                    TimeSelection.timestamp <= end_date
-                )
-            ).all()
+    try:
+        with SessionLocal() as session:
+            user = session.query(User).filter_by(tg_id=message.chat.id).first()
 
-            if not time_selections:
-                return f"У вас нет выборов времени с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}."
+            if not user:
+                logger.warning(f"Пользователь не найден: {message.chat.id}")
+                return "Пользователь не найден."
 
-            time_stats = defaultdict(int)
-            for selection in time_selections:
-                time_stats[selection.time_choice.choice] += 1
+            if stat_type == "time":
+                # Получаем выборы времени в указанном диапазоне
+                time_selections = session.query(TimeSelection).filter(
+                    and_(
+                        TimeSelection.user_id == user.id,
+                        TimeSelection.timestamp >= start_date,
+                        TimeSelection.timestamp <= end_date
+                    )
+                ).all()
 
-            sorted_stats = sorted(time_stats.items(), key=lambda x: x[1], reverse=True)
+                if not time_selections:
+                    logger.info(f"Нет временных выборов в диапазоне для пользователя {user.id}")
+                    return f"У вас нет выборов времени с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}."
 
-            response = f"<b>Статистика времени с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}:</b>\n\n"
+                time_stats = defaultdict(int)
+                for selection in time_selections:
+                    time_stats[selection.time_choice.choice] += 1
 
-            for time_choice, count in sorted_stats:
-                interpretation = session.query(TimeChoice).filter_by(choice=time_choice).first()
-                if interpretation:
-                    response += f"<b>{time_choice}</b>: {count} раз(а) - {interpretation.interpretation}\n"
+                sorted_stats = sorted(time_stats.items(), key=lambda x: x[1], reverse=True)
 
-        elif stat_type == "numbers":
-            number_selections = session.query(NumberSelection).filter(
-                and_(
-                    NumberSelection.user_id == user.id,
-                    NumberSelection.timestamp >= start_date,
-                    NumberSelection.timestamp <= end_date
-                )
-            ).all()
+                response = f"<b>Статистика времени с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}:</b>\n\n"
 
-            if not number_selections:
-                return f"У вас нет выборов чисел с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}."
+                for time_choice, count in sorted_stats:
+                    interpretation = session.query(TimeChoice).filter_by(choice=time_choice).first()
+                    if interpretation:
+                        response += f"<b>{time_choice}</b>: {count} раз(а) - {interpretation.interpretation}\n\n"
 
-            number_stats = defaultdict(int)
-            for selection in number_selections:
-                number_stats[selection.number_choice.number] += 1
+            elif stat_type == "numbers":
+                # Получаем выборы чисел в указанном диапазоне
+                number_selections = session.query(NumberSelection).filter(
+                    and_(
+                        NumberSelection.user_id == user.id,
+                        NumberSelection.timestamp >= start_date,
+                        NumberSelection.timestamp <= end_date
+                    )
+                ).all()
 
-            sorted_stats = sorted(number_stats.items(), key=lambda x: x[1], reverse=True)
+                if not number_selections:
+                    logger.info(f"Нет числовых выборов в диапазоне для пользователя {user.id}")
+                    return f"У вас нет выборов чисел с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}."
 
-            response = f"<b>Статистика чисел с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}:</b>\n\n"
+                number_stats = defaultdict(int)
+                for selection in number_selections:
+                    number_stats[selection.number_choice.number] += 1
 
-            for number, count in sorted_stats:
-                interpretation = session.query(NumberChoice).filter_by(number=number).first()
-                if interpretation:
-                    response += f"<b>{number}</b>: {count} раз(а) - {interpretation.interpretation}\n\n"
+                sorted_stats = sorted(number_stats.items(), key=lambda x: x[1], reverse=True)
 
-        return response.strip()
+                response = f"<b>Статистика чисел с {start_date.strftime('%d %B %Y')} по {end_date.strftime('%d %B %Y')}:</b>\n\n"
+
+                for number, count in sorted_stats:
+                    interpretation = session.query(NumberChoice).filter_by(number=number).first()
+                    if interpretation:
+                        response += f"<b>{number}</b>: {count} раз(а) - {interpretation.interpretation}\n\n"
+            else:
+                logger.warning(f"Неизвестный тип статистики: {stat_type}")
+                return "Неизвестный тип статистики."
+
+            return response.strip()
+    except Exception as e:
+        logger.error(f"Ошибка при получении статистики за период: {e}", exc_info=True)
+        return "Произошла ошибка при получении статистики. Пожалуйста, попробуйте позже."
